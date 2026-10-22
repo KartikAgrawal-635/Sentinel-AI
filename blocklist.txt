@@ -1,0 +1,6 @@
+# Demo blocklist (one registered domain per line). Replace/extend with real feeds
+# such as OpenPhish, PhishTank, URLhaus in production.
+secure-sbi-kyc.xyz
+paytm-reward-claim.top
+amaz0n-offers.click
+free-recharge-win.tk
