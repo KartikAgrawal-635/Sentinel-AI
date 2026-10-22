@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sentinel AI</title>
+<style>
+:root{--navy:#1E1B4B;--indigo:#4F46E5;--cyan:#06B6D4;--green:#10B981;--amber:#F59E0B;--red:#EF4444;--bg:#EEF2FF;--ink:#0F172A}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;display:flex;justify-content:center}
+.app{width:100%;max-width:440px;background:#fff;min-height:100vh;box-shadow:0 0 40px rgba(30,27,75,.15);display:flex;flex-direction:column}
+header{background:var(--navy);color:#fff;padding:20px 20px 16px;border-bottom:4px solid var(--cyan)}
+header h1{font-size:22px;letter-spacing:.5px}header h1 span{color:var(--cyan)}
+header p{font-size:13px;opacity:.8;margin-top:4px}
+nav{display:flex;border-bottom:1px solid #e2e8f0}
+nav button{flex:1;padding:13px 4px;background:none;border:none;font-size:14px;font-weight:600;color:#64748b;cursor:pointer;border-bottom:3px solid transparent}
+nav button.active{color:var(--indigo);border-bottom-color:var(--indigo)}
+main{padding:18px;flex:1}
+.panel{display:none}.panel.active{display:block}
+label{font-size:13px;font-weight:600;color:#475569;display:block;margin-bottom:6px}
+input[type=text],textarea{width:100%;padding:12px;border:1.5px solid #cbd5e1;border-radius:10px;font-size:15px;font-family:inherit}
+textarea{min-height:110px;resize:vertical}
+input:focus,textarea:focus{outline:none;border-color:var(--indigo)}
+.btn{width:100%;margin-top:12px;padding:13px;background:var(--indigo);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer}
+.btn:active{opacity:.85}.btn.ghost{background:#fff;color:var(--indigo);border:1.5px solid var(--indigo)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.chip{font-size:12px;padding:6px 10px;border-radius:999px;background:var(--bg);color:var(--indigo);border:none;cursor:pointer;font-weight:600}
+.result{margin-top:18px;border-radius:14px;padding:16px;border:2px solid #e2e8f0;animation:pop .25s ease}
+@keyframes pop{from{transform:scale(.97);opacity:0}to{transform:none;opacity:1}}
+.result.safe{border-color:var(--green);background:#f0fdf9}.result.suspicious{border-color:var(--amber);background:#fffbeb}.result.dangerous{border-color:var(--red);background:#fef2f2}
+.score-row{display:flex;align-items:center;gap:14px}
+.ring{--p:0;--c:var(--green);width:84px;height:84px;border-radius:50%;background:conic-gradient(var(--c) calc(var(--p)*1%),#e2e8f0 0);display:grid;place-items:center;flex:none}
+.ring div{width:66px;height:66px;border-radius:50%;background:#fff;display:grid;place-items:center;font-size:24px;font-weight:800}
+.verdict{font-size:20px;font-weight:800;text-transform:capitalize}.sub{font-size:13px;color:#64748b;word-break:break-all}
+.list{margin-top:14px;list-style:none}
+.list li{padding:10px 0;border-top:1px solid rgba(0,0,0,.07);font-size:14px}
+.list b{display:block;font-size:13px}.list.ok li{color:#047857}
+.h{font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.6px;margin-top:16px}
+.msg{background:#f1f5f9;border-radius:14px 14px 14px 4px;padding:12px;margin-top:12px;font-size:14px;line-height:1.5}
+.msg .from{font-size:12px;font-weight:700;color:#64748b;margin-bottom:4px}
+.msg a{color:#2563eb;text-decoration:underline;cursor:pointer;word-break:break-all}
+.note{font-size:12px;color:#64748b;margin-top:10px}
+.overlay{position:fixed;inset:0;background:rgba(15,23,42,.6);display:none;align-items:flex-end;justify-content:center;z-index:10}
+.overlay.show{display:flex}
+.sheet{background:#fff;width:100%;max-width:440px;border-radius:22px 22px 0 0;padding:22px;animation:up .25s ease}
+@keyframes up{from{transform:translateY(60px);opacity:0}to{transform:none;opacity:1}}
+.sheet .shield{font-size:34px}.sheet h2{font-size:18px;margin:4px 0}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:12px 18px;border-radius:10px;font-size:13px;display:none;z-index:20;max-width:90%}
+canvas{display:none}
+</style>
+</head>
+<body>
+<div class="app">
+  <header><h1>SENTINEL <span>AI</span></h1><p>Know why a link is risky before you tap it.</p></header>
+  <nav>
+    <button class="active" data-tab="link">Link</button>
+    <button data-tab="sms">Message</button>
+    <button data-tab="qr">QR</button>
+    <button data-tab="demo">Live demo</button>
+  </nav>
+  <main>
+    <section class="panel active" id="link">
+      <label for="urlIn">Paste a link</label>
+      <input type="text" id="urlIn" placeholder="e.g. paypa1-login.com/verify" autocomplete="off">
+      <button class="btn" id="scanUrl">Scan link</button>
+      <div class="chips" id="urlSamples"></div>
+      <div id="urlOut"></div>
+    </section>
+    <section class="panel" id="sms">
+      <label for="smsIn">Paste a suspicious message</label>
+      <textarea id="smsIn" placeholder="Paste the SMS / WhatsApp text here"></textarea>
+      <button class="btn" id="scanSms">Analyze message</button>
+      <div class="chips" id="smsSamples"></div>
+      <div id="smsOut"></div>
+    </section>
+    <section class="panel" id="qr">
+      <label>Upload a photo or screenshot of a QR code</label>
+      <input type="file" id="qrFile" accept="image/*" style="display:none">
+      <button class="btn ghost" id="qrPick">Choose QR image</button>
+      <canvas id="qrCanvas"></canvas>
+      <p class="note">The QR is decoded on your device; only the link inside is checked.</p>
+      <div id="qrOut"></div>
+    </section>
+    <section class="panel" id="demo">
+      <div class="h" style="margin-top:0">Simulated inbox</div>
+      <p class="note">Tap a link below. Sentinel intercepts it and checks it before it opens.</p>
+      <div class="msg"><div class="from">HDFC-ALERT</div>Dear customer, your account will be blocked today. Complete KYC now:
+        <a data-link="http://hdfc-kyc-update.top/verify">hdfc-kyc-update.top/verify</a></div>
+      <div class="msg"><div class="from">Rahul (Friend)</div>Notes for tomorrow's exam are here:
+        <a data-link="https://en.wikipedia.org/wiki/Computer_engineering">en.wikipedia.org/wiki/Computer_engineering</a></div>
+      <div class="msg"><div class="from">+91 98xxx xx210</div>Congratulations! You won Rs 50,000 cashback. Claim: 
+        <a data-link="http://paytm-reward-claim.top/win">paytm-reward-claim.top/win</a></div>
+    </section>
+  </main>
+</div>
+
+<div class="overlay" id="overlay"><div class="sheet" id="sheet"></div></div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const COLORS = {safe:'var(--green)', suspicious:'var(--amber)', dangerous:'var(--red)'};
+const LABELS = {safe:'Looks safe', suspicious:'Be careful', dangerous:'Dangerous'};
+
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('nav button, .panel').forEach(e => e.classList.remove('active'));
+  b.classList.add('active'); $('#' + b.dataset.tab).classList.add('active');
+});
+
+function el(tag, cls, text){const e=document.createElement(tag); if(cls)e.className=cls; if(text!==undefined)e.textContent=text; return e;}
+
+function renderResult(r, target){
+  target.replaceChildren();
+  const box = el('div', 'result ' + r.verdict);
+  const row = el('div', 'score-row');
+  const ring = el('div', 'ring'); ring.style.setProperty('--p', r.trust_score); ring.style.setProperty('--c', COLORS[r.verdict]);
+  ring.appendChild(el('div', '', r.trust_score));
+  const info = el('div');
+  info.appendChild(el('div', 'verdict', LABELS[r.verdict]));
+  info.appendChild(el('div', 'sub', 'Trust score out of 100' + (r.domain ? ' · ' + r.domain : '')));
+  row.append(ring, info); box.appendChild(row);
+  if (r.findings.length){
+    box.appendChild(el('div', 'h', 'Why Sentinel flagged this'));
+    const ul = el('ul', 'list');
+    r.findings.forEach(f => { const li = el('li'); li.appendChild(el('b', '', f.signal)); li.appendChild(document.createTextNode(f.detail)); ul.appendChild(li); });
+    box.appendChild(ul);
+  }
+  if (r.passed && r.passed.length){
+    box.appendChild(el('div', 'h', 'Checks passed'));
+    const ul = el('ul', 'list ok'); r.passed.forEach(p => ul.appendChild(el('li', '', '✓ ' + p))); box.appendChild(ul);
+  }
+  if (r.links && r.links.length){
+    box.appendChild(el('div', 'h', 'Links found in message'));
+    const ul = el('ul', 'list'); r.links.forEach(l => ul.appendChild(el('li', '', l.url + ' — ' + l.verdict + ' (' + l.trust_score + ')'))); box.appendChild(ul);
+  }
+  target.appendChild(box);
+}
+
+async function post(path, body){
+  const res = await fetch(path, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  return {ok:res.ok, data: await res.json()};
+}
+async function scanUrl(url, target){
+  target.replaceChildren(el('p','note','Scanning…'));
+  try{
+    const {ok,data} = await post('/api/scan/url', {url});
+    if(!ok){ target.replaceChildren(el('p','note',data.error)); return null; }
+    renderResult(data, target); return data;
+  }catch(e){ target.replaceChildren(el('p','note','Could not reach the Sentinel server. Is app.py running?')); return null; }
+}
+
+$('#scanUrl').onclick = () => scanUrl($('#urlIn').value, $('#urlOut'));
+$('#urlIn').addEventListener('keydown', e => { if(e.key==='Enter') $('#scanUrl').click(); });
+$('#scanSms').onclick = async () => {
+  const t = $('#smsOut'); t.replaceChildren(el('p','note','Analyzing…'));
+  try{
+    const {ok,data} = await post('/api/scan/sms', {text:$('#smsIn').value});
+    if(!ok){ t.replaceChildren(el('p','note',data.error)); return; }
+    renderResult(data, t);
+  }catch(e){ t.replaceChildren(el('p','note','Could not reach the Sentinel server. Is app.py running?')); }
+};
+
+const urlSamples = ['https://www.google.com','paypa1-login.com/verify','http://192.168.4.7/update','bit.ly/3xYz12'];
+urlSamples.forEach(u => { const c = el('button','chip',u); c.onclick = () => { $('#urlIn').value = u; $('#scanUrl').click(); }; $('#urlSamples').appendChild(c); });
+const smsSamples = [
+ ['Fake KYC','URGENT: Your SBI account will be blocked. Complete KYC now http://sbi-kyc-update.top/verify'],
+ ['Prize scam','Congratulations! You won a free recharge worth Rs 999. Claim your reward: http://free-recharge-win.tk'],
+ ['Normal text','Hey, are we meeting at 5? Here is the map https://maps.google.com']];
+smsSamples.forEach(([n,t]) => { const c = el('button','chip',n); c.onclick = () => { $('#smsIn').value = t; $('#scanSms').click(); }; $('#smsSamples').appendChild(c); });
+
+// QR: decode locally, then scan the link inside
+$('#qrPick').onclick = () => $('#qrFile').click();
+$('#qrFile').onchange = e => {
+  const file = e.target.files[0]; if(!file) return;
+  const img = new Image();
+  img.onload = () => {
+    const cv = $('#qrCanvas'), ctx = cv.getContext('2d');
+    const scale = Math.min(1, 900 / Math.max(img.width, img.height));
+    cv.width = img.width*scale; cv.height = img.height*scale; ctx.drawImage(img,0,0,cv.width,cv.height);
+    const d = ctx.getImageData(0,0,cv.width,cv.height);
+    const code = window.jsQR ? jsQR(d.data, d.width, d.height) : null;
+    if(!code){ $('#qrOut').replaceChildren(el('p','note','No QR code found in that image. Try a clearer, closer photo.')); return; }
+    const out = $('#qrOut'); out.replaceChildren(el('p','note','QR contains: ' + code.data));
+    const holder = el('div'); out.appendChild(holder); scanUrl(code.data, holder);
+  };
+  img.src = URL.createObjectURL(file);
+};
+
+// Live demo: intercept tapped link
+document.querySelectorAll('[data-link]').forEach(a => a.onclick = async () => {
+  const url = a.dataset.link;
+  try{
+    const {data} = await post('/api/scan/url', {url});
+    const sheet = $('#sheet'); sheet.replaceChildren();
+    sheet.appendChild(el('div','shield', data.verdict==='safe' ? '🛡️' : '⚠️'));
+    sheet.appendChild(el('h2','', data.verdict==='safe' ? 'Sentinel checked this link' : 'Sentinel stopped this link'));
+    const holder = el('div'); sheet.appendChild(holder); renderResult(data, holder);
+    const back = el('button','btn','Go back to safety'); back.onclick = () => $('#overlay').classList.remove('show');
+    const go = el('button','btn ghost', data.verdict==='safe' ? 'Open link' : 'Proceed anyway (not recommended)');
+    go.onclick = () => { $('#overlay').classList.remove('show'); toast('Demo: the link would open here.'); };
+    sheet.append(back, go);
+    $('#overlay').classList.add('show');
+  }catch(e){ toast('Could not reach the Sentinel server. Is app.py running?'); }
+});
+$('#overlay').onclick = e => { if(e.target.id==='overlay') $('#overlay').classList.remove('show'); };
+function toast(t){ const x=$('#toast'); x.textContent=t; x.style.display='block'; setTimeout(()=>x.style.display='none',2500); }
+</script>
+</body>
+</html>
